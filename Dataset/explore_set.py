@@ -6,7 +6,7 @@ from io import BytesIO
 import torch
 import numpy as np
 
-from Dataset.visualise import draw_ecgs_to_htlm
+from Dataset.visualise import draw_ecgs_to_htlm, show_heart_rates
 
 class Query:
     """
@@ -102,6 +102,7 @@ if __name__ == "__main__":
 
     with open(JSON_PATH, 'r') as f:
         data = json.load(f)
+        show_heart_rates(data, "results")
         #print_diagnosis_distribution(data)
         diags = {"regular_normosystole":True,
                  "incomplete_right_bundle_branch_block":True}

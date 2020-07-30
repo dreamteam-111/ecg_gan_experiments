@@ -25,8 +25,22 @@ def get_lead_signal(ecg, lead_name):
 def get_ecg_description(ecg):
     return ecg["TextDiagnosisDoc"]
 
-def get_ecg_desaeces(ecg):
-    return ""
+def show_heart_rates(json_data, folder):
+    """ Visualise how much pacients have x heart rate for all x"""
+    hrs = []
+    for case_id in json_data.keys():
+        hrate = int(json_data[case_id]["HeartRate"])
+        hrs.append(hrate)
+    os.makedirs(folder, exist_ok=True)
+
+    plt.xlabel("ЧСС")
+    plt.xticks(np.arange(0, max(hrs)+10, 10))
+    plt.hist(x=hrs)
+    plt.ylabel("Кол-во пациентов")
+    plt.savefig(folder+"/" + "hist_HR.png")
+    plt.clf()
+
+
 
 def draw_ecgs_to_htlm(json_data, ecgs_ids, name_html, folder,
                       leads=['i', 'ii', 'iii', 'avr', 'avl', 'avf', 'v1', 'v2', 'v3', 'v4', 'v5', 'v6'],
