@@ -5,15 +5,16 @@ import argparse
 import numpy as np
 import torch
 from torch.autograd import Variable
-from DC_GAN_centered_qrs.train import Generator, Discriminator, opt
-from DC_GAN_centered_qrs.saver import save_ecg_to_explore, save_ecgs_varied_one_plot, save_ecgs_varied_several_plots
+from DC_GAN_near_center.train import Generator, Discriminator, opt
+from DC_GAN_near_center.saver import save_ecg_to_explore, save_ecgs_varied_one_plot, save_ecgs_varied_several_plots
 from Representation.latent_interpolate import get_interpolation
 
+
 exp_parser = argparse.ArgumentParser()
-exp_parser.add_argument("--left_bound", type=float, default=0, help="left bound of variation of latent var")
-exp_parser.add_argument("--right_bound", type=float, default=-0.1, help="right bound of variation of latent var")
+exp_parser.add_argument("--left_bound", type=float, default=-1, help="left bound of variation of latent var")
+exp_parser.add_argument("--right_bound", type=float, default=1, help="right bound of variation of latent var")
 exp_parser.add_argument("--num_steps", type=int, default=15, help="num steps of variation of latent var")
-exp_parser.add_argument("--normal", type=bool, default=True, help="z is noise from normal, or z is zeros")
+exp_parser.add_argument("--normal", type=bool, default=False, help="z is noise from normal, or z is zeros")
 exp_parser.add_argument("--eval", type=bool, default=True, help="eval or train regime of generator|discriminator")
 eopt = exp_parser.parse_args()
 
@@ -60,6 +61,20 @@ def get_trained_models(id="LAST"):
         discriminator.train()
     return generator, discriminator
 
+
+def draw_fake_at_zero(generator):
+    cuda = True if torch.cuda.is_available() else False
+    if cuda:
+        generator.cuda()
+    Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
+
+    # --------------------------
+    # draw fake ECG  with z= zeros
+    # --------------------------
+    z_zero = Variable(Tensor(np.zeros((1, opt.latent_dim))))
+    fake_ecg_zero = generator(z_zero)[0]
+    save_ecg_to_explore(fake_ecg_zero.detach().cpu().numpy(), "zero.png")
+
 def draw_interpolation(generator, num_steps):
     cuda = True if torch.cuda.is_available() else False
     if cuda:
@@ -76,30 +91,15 @@ def draw_interpolation(generator, num_steps):
     save_ecgs_varied_one_plot(ecgs_fake_varied, "INTERPOL" +str(some_num))
     save_ecgs_varied_several_plots(ecgs_fake_varied, "INTERPOL"+str(some_num))
 
-def draw_fake_at_zero(generator):
-    cuda = True if torch.cuda.is_available() else False
-    if cuda:
-        generator.cuda()
-    Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
-
-    # --------------------------
-    # draw fake ECG  with z= zeros
-    # --------------------------
-    z_zero = Variable(Tensor(np.zeros((1, opt.latent_dim))))
-    fake_ecg_zero = generator(z_zero)[0]
-    save_ecg_to_explore(fake_ecg_zero.detach().cpu().numpy(), "zero.png")
-
-
-
 def draw_variation_at_i_one_latent(generator, index_in_latent):
     cuda = True if torch.cuda.is_available() else False
     if cuda:
         generator.cuda()
     Tensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
     # ---------------------------
-    # Show interpolation on c_i
+    # Show interpolation on c1
     # ---------------------------
-    num_steps = 5
+
     if eopt.normal is True:
         z_varied = get_ci_varied_over_normal(index_in_latent)
     else:
@@ -111,9 +111,10 @@ def draw_variation_at_i_one_latent(generator, index_in_latent):
 
 if __name__ == "__main__":
     os.makedirs("explore", exist_ok=True)
+    print("experiment  infogan visualisation")
     generator, discriminator = get_trained_models("17000")
-    draw_fake_at_zero(generator)
 
+    draw_fake_at_zero(generator)
     for i in range(25):
         draw_interpolation(generator, num_steps=6)
 

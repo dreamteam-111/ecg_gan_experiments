@@ -12,6 +12,7 @@ ALL_LEADS_NAMES = ['i', 'ii', 'iii', 'avr', 'avl', 'avf', 'v1', 'v2', 'v3', 'v4'
 SIGNAL_LEN = 5000
 
 
+
 class CycleComponent(Enum):
     P = 1
     QRS = 2
@@ -67,25 +68,27 @@ class ECGDataset(Dataset):
         center_of_component = triplets[random_triplet_id][1]
 
         # Move that position by random number of steps to the left|right
-        center_of_component = self.move_center_of_patch(center_of_component)
+        moved_center_of_component, label = self.move_center_of_patch(center_of_component)
 
+        delta = torch.LongTensor([label])
         # Cut patch of ECG centered in selected position
-        patch_start = center_of_component - int(self.patch_len/2)
+        patch_start = moved_center_of_component - int(self.patch_len/2)
         patch_end = patch_start + self.patch_len
         if patch_start >= 0 and patch_end < SIGNAL_LEN:
             # Return that patch as PyTorch Tensor
             signal = self.cut_patch(ecg_object, patch_start)
+
             if self.transform:
                 res = self.transform(signal)
         else:
             # Not possible to take this patch, need to make another attempt
-            res = self.__getitem__(idx)
-        return res
+            res, delta = self.__getitem__(idx)
+        return res, delta
 
     def move_center_of_patch(self, current_center):
         steps = np.random.randint(low=-self.max_steps_left, high=self.max_steps_left)
         offset = steps * self.step_size
-        return current_center + offset
+        return current_center + offset, steps + self.max_steps_left
 
     def cut_patch(self, ecg_obj, start_of_patch):
         patch = []

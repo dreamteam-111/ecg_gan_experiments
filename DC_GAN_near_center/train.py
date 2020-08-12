@@ -65,9 +65,9 @@ class Generator(nn.Module):
     def forward(self, z):
         out = self.l1(z)
         out = out.view(out.shape[0], 128, self.init_len)
-        if Log: print("after first in generator, size" + str(out.size()))
+
         out = self.conv_block(out)
-        if Log: print("last   in generator, size" + str(out.size()))
+
         return out
 
 
