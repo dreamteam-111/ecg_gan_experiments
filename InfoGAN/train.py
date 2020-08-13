@@ -16,22 +16,23 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch
 from InfoGAN.dataset_creator import ECGDataset
-from InfoGAN.generator import Generator
+from InfoGAN.generator import Generator, save_pics
 from InfoGAN.discriminator import Discriminator
-
+from InfoGAN.saver import save_models, save_training_curves
 
 
 class Params(NamedTuple):
+    experiment_folder: str
     # params of data generator
-    step_size: int = 20      # num discrets in one step
+    step_size: int = 25      # num discrets in one step
     max_steps_left: int = 2  # num steps from patch center, allowed for the moving complex
     n_classes: int = 5       # number of classes for dataset
     patch_len: int = 256     # size of ecg patch, need to be degree of 2
-    num_channels: int = 3    # "number of channels in ecg, no more than 12"
+    num_channels: int = 1    # "number of channels in ecg, no more than 12"
 
     # params of model
     code_dim: int = 2
-    latent_dim: int = 62
+    latent_dim: int = 36
 
     # params of training
     lr: float = 0.0002    #adam: learning rate
@@ -41,8 +42,8 @@ class Params(NamedTuple):
     n_epochs: int = 2501
 
     # params of logger
-    save_pic_interval: int = 200
-    save_model_interval: int = 1000
+    save_pic_interval: int = 30 # in epoches
+    save_model_interval: int = 30 # in epoches
 
 def weights_init_normal(m):
     classname = m.__class__.__name__
@@ -53,7 +54,7 @@ def weights_init_normal(m):
         torch.nn.init.constant_(m.bias.data, 0.0)
 
 def train(opt):
-
+    best_loss = None
     cuda = True if torch.cuda.is_available() else False
 
     FloatTensor = torch.cuda.FloatTensor if cuda else torch.FloatTensor
@@ -103,7 +104,7 @@ def train(opt):
     dataset_object = ECGDataset(opt.patch_len,
                                     max_steps_left=opt.max_steps_left,
                                     step_size=opt.step_size,
-                                    selected_leads=['i', 'ii', 'iii'])
+                                    num_leads=opt.num_channels)
     dataloader = torch.utils.data.DataLoader(dataset_object,
             batch_size=opt.batch_size,
             shuffle=True
@@ -187,12 +188,36 @@ def train(opt):
 
             info_loss.backward()
             optimizer_info.step()
+
+            # report current result etc..
             print(
                 "[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %f] [info loss: %f]"
                 % (epoch, opt.n_epochs, i, len(dataloader), d_loss.item(), g_loss.item(), info_loss.item())
             )
 
+            if epoch % opt.save_model_interval == 0:
+                filename = "epoch_" + str(epoch)
+                folder = opt.experiment_folder + "/checkpoints"
+                if best_loss is None:
+                    best_loss = info_loss.item()
+                else:
+                    if best_loss <= info_loss.item():
+                        best_loss = info_loss.item()
+                        save_models(filename, folder, generator, discriminator)
+
+            if epoch % opt.save_pic_interval == 0:
+                filename = str(epoch) + "_epoch"
+                folder = opt.experiment_folder + "/img"
+                save_pics(filename, folder, generator)
+
+
+    # at the end of training
+    filename = "LAST"
+    folder = opt.experiment_folder + "/checkpoints"
+    save_models(filename, folder, generator, discriminator)
+
 
 if __name__ == "__main__":
-    parameters = Params()
+    parameters = Params("experiment")
+    print(parameters._asdict())
     train(parameters)

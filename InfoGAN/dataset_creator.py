@@ -32,7 +32,7 @@ class ECGDataset(Dataset):
 
     def __init__(self, patch_len, max_steps_left, step_size,
                  transform=ToTensor(),
-                 selected_leads=['i', 'ii', 'iii'],
+                 num_leads=3,
                  what_component=CycleComponent.QRS):
         """
         Args:
@@ -46,7 +46,7 @@ class ECGDataset(Dataset):
         FILENAME = "ecg_data_200.json"
         json_file = BWR_PATH + FILENAME
         self.transform = transform
-        self.selected_leads = selected_leads
+        self.selected_leads = ALL_LEADS_NAMES[0:num_leads]
         with open(json_file, 'r') as f:
             self.data = json.load(f)
         self.patch_len = patch_len
@@ -59,7 +59,7 @@ class ECGDataset(Dataset):
         return len(self.indexes)
 
     def __getitem__(self, idx):
-        #idx = 25  закомментить!!!
+        idx = 25  #закомментить!!!
         ecg_object = self.data[self.indexes[idx]]
         triplets = self.get_all_comlexes(ecg_object, self.what_component)
         random_triplet_id = np.random.randint(low=0, high=len(triplets))
@@ -124,7 +124,7 @@ if __name__ == "__main__":
     dataset_object = dataset_object = ECGDataset(256,
                                 max_steps_left=25,
                                 step_size=1,
-                                selected_leads=['i', 'ii', 'iii'])
+                                num_leads=3)
     dataloader = DataLoader(dataset_object, batch_size=15, shuffle=True)
 
     for i, batch in enumerate(dataloader):
